@@ -7,6 +7,7 @@ export const config = {
   timezone: process.env.TIMEZONE,
   mcpServerUrl: process.env.MCP_SERVER_URL,
   llmGatewayUrl: process.env.LLM_GATEWAY_URL,
+  historyLimit: Number(process.env.HISTORY_LIMIT) || 0,
 };
 
 export const MODEL = process.env.MODEL;

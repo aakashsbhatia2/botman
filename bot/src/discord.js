@@ -21,16 +21,42 @@ export function createDiscordBot({ service }) {
 
     try {
       await message.channel.sendTyping();
-      const reply = await service.handleMessage(
-        message.author.id,
-        message.content,
-      );
+
+      const ordered = [];
+      const limit = config.historyLimit;
+      if (Number.isInteger(limit) && limit >= 1 && limit <= 100) {
+        const fetched = await message.channel.messages.fetch({
+          limit,
+          before: message.id,
+        });
+        ordered.push(...[...fetched.values()].reverse());
+      }
+      ordered.push(message);
+
+      const reply = await service.handleMessage(toTurns(ordered));
       if (reply) for (const part of chunk(reply)) await message.reply(part);
     } catch (err) {
       console.error("[discord] failed to handle message:", err);
       await message.reply("Something went wrong handling that. Check the logs.");
     }
   });
+
+  function toTurns(messages) {
+    const turns = [];
+    for (const m of messages) {
+      let role;
+      if (m.author.id === config.ownerUserId) role = "user";
+      else if (m.author.id === client.user.id) role = "assistant";
+      else continue;
+      if (!m.content) continue;
+
+      const last = turns[turns.length - 1];
+      if (last && last.role === role) last.content += "\n" + m.content;
+      else turns.push({ role, content: m.content });
+    }
+    while (turns.length && turns[0].role !== "user") turns.shift();
+    return turns;
+  }
 
   function chunk(text, size = 1900) {
     const parts = [];

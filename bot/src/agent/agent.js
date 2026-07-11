@@ -35,11 +35,11 @@ export function createAgent() {
   }
 
   return {
-    async respond(text) {
+    async respond(history) {
       return withToolSession(async (session) => {
         const definitions = await session.listDefinitions();
         const system = `${SYSTEM_PROMPT}\n\n${nowContext()}`;
-        const messages = [{ role: "user", content: text }];
+        const messages = [...history];
 
         for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
           const message = await anthropic().messages.create({

@@ -45,16 +45,17 @@ This is what powers the bot's replies. The bot calls Anthropic directly, no gate
 
 **Run it:** `cd bot && npm run dev` again. It still logs in, now with your key loaded.
 
-## Step 3: Set timezone + model
+## Step 3: Set timezone, model, and history
 
-`bot/.env` already has these two filled with sensible defaults. Change `TIMEZONE` to your own [IANA timezone](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) (used when scheduling):
+`bot/.env` already has these filled with sensible defaults. Change `TIMEZONE` to your own [IANA timezone](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) (used when scheduling):
 
 ```
 TIMEZONE=America/New_York
 MODEL=claude-sonnet-4-6
+HISTORY_LIMIT=10
 ```
 
-Leave `MODEL` as-is for a good default: `claude-haiku-4-5` is cheapest, `claude-opus-4-8` is best. That's all of `bot/.env` done.
+Leave `MODEL` as-is for a good default: `claude-haiku-4-5` is cheapest, `claude-opus-4-8` is best. `HISTORY_LIMIT` is how many recent messages the bot reads back from the chat for context on each reply; set it to `0` to turn history off. That's all of `bot/.env` done.
 
 **Run it:** `cd bot && npm run dev`. It should log in cleanly. `bot/.env` is now complete.
 

@@ -1,0 +1,5 @@
+node_modules/
+.env
+localFiles/
+companies.json
+resume.md

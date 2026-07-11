@@ -1,0 +1,18 @@
+prometheus.scrape "agentgateway" {
+  targets = [
+    { __address__ = coalesce(sys.env("SCRAPE_TARGET"), "agentgateway.railway.internal:15020") },
+  ]
+  metrics_path    = "/metrics"
+  scrape_interval = "30s"
+  forward_to      = [prometheus.remote_write.grafanacloud.receiver]
+}
+
+prometheus.remote_write "grafanacloud" {
+  endpoint {
+    url = sys.env("GRAFANA_PROM_URL")
+    basic_auth {
+      username = sys.env("GRAFANA_PROM_USER")
+      password = sys.env("GRAFANA_PROM_TOKEN")
+    }
+  }
+}

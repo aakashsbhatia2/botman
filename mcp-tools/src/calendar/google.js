@@ -15,19 +15,35 @@ export function createCalendar() {
   return {
     async createEvent({ title, start, end, description, attendees = [] }) {
       const endTime =
-        end ?? new Date(new Date(start).getTime() + DEFAULT_DURATION_MS).toISOString();
+        end ??
+        new Date(new Date(`${start}Z`).getTime() + DEFAULT_DURATION_MS)
+          .toISOString()
+          .slice(0, 19);
 
-      const res = await calendar.events.insert({
-        calendarId: "primary",
-        sendUpdates: "all",
-        requestBody: {
-          summary: title,
-          description,
-          start: { dateTime: start, timeZone: config.timezone },
-          end: { dateTime: endTime, timeZone: config.timezone },
-          attendees: attendees.map((email) => ({ email })),
-        },
-      });
+      let res;
+      try {
+        res = await calendar.events.insert({
+          calendarId: "primary",
+          sendUpdates: "all",
+          requestBody: {
+            summary: title,
+            description,
+            start: { dateTime: start, timeZone: config.timezone },
+            end: { dateTime: endTime, timeZone: config.timezone },
+            attendees: attendees.map((email) => ({ email })),
+          },
+        });
+      } catch (err) {
+        console.error(
+          "[google] events.insert failed:",
+          JSON.stringify(err.response?.data ?? err.message),
+        );
+        throw err;
+      }
+
+      console.log(
+        `[google] event created: status=${res.status} link=${res.data.htmlLink}`,
+      );
 
       const event = res.data;
       return {

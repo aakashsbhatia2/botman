@@ -21,6 +21,9 @@ export function createAgent() {
     async respond(history) {
       return withToolSession(async (session) => {
         const tools = await session.listOpenAITools();
+        const toolParams = Object.fromEntries(
+          tools.map((t) => [t.function.name, t.function.parameters]),
+        );
         const system = `${SYSTEM_PROMPT}\n\n${nowContext()}`;
         const messages = [{ role: "system", content: system }, ...history];
 
@@ -36,12 +39,18 @@ export function createAgent() {
           const message = completion.choices[0].message;
 
           if (!message.tool_calls?.length) {
+            console.log("[agent] model returned text, no tool call");
             return (message.content ?? "").trim();
           }
 
           messages.push(message);
 
           for (const call of message.tool_calls) {
+            console.log(`[agent] tool call: ${call.function.name}`);
+            console.log(`[agent]   sent:    ${call.function.arguments}`);
+            console.log(
+              `[agent]   accepts: ${JSON.stringify(toolParams[call.function.name])}`,
+            );
             let result;
             try {
               const args = call.function.arguments
@@ -52,6 +61,7 @@ export function createAgent() {
               console.error(`[agent] tool ${call.function.name} failed:`, err);
               result = `Error: ${err.message}`;
             }
+            console.log(`[agent]   result:  ${String(result)}`);
             messages.push({
               role: "tool",
               tool_call_id: call.id,

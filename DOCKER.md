@@ -13,7 +13,7 @@ cd botman
 ## Prerequisites
 
 - **Docker**
-- For GPU-accelerated Ollama, the **NVIDIA Container Toolkit**. Without it, remove the `deploy:` block from the `ollama` service in `docker-compose.yml` and Ollama runs on CPU (slower).
+- Running Ollama **in a container with GPU** needs the **native Docker Engine** plus the **NVIDIA Container Toolkit**. **Docker Desktop on Linux cannot pass through an NVIDIA GPU**, so on Docker Desktop either run Ollama on your host (Option B below) or run the container on CPU by removing the `deploy:` block from the `ollama` service in `docker-compose.yml`.
 
 ## 1. Get your credentials
 
@@ -27,7 +27,7 @@ cp .env.example .env
 
 Fill in `DISCORD_TOKEN`, `OWNER_USER_ID`, and the `NOTION_*` / `GOOGLE_*` values. Then pick your LLM in the same file.
 
-**Option A: local Ollama (default).** Leave the `LLM_*` lines as-is:
+**Option A: Ollama in a container (default).** Leave the `LLM_*` lines as-is. Needs native Docker + the NVIDIA toolkit for GPU (see Prerequisites):
 
 ```
 LLM_BASE_URL=http://ollama:11434/v1
@@ -35,7 +35,15 @@ LLM_API_KEY=ollama
 LLM_MODEL=llama3.1:8b
 ```
 
-**Option B: Anthropic (Claude).** Use your key and Anthropic's OpenAI-compatible endpoint:
+**Option B: Ollama on your host** (recommended on Docker Desktop, or if you already run Ollama). Point the bot at the host:
+
+```
+LLM_BASE_URL=http://host.docker.internal:11434/v1
+LLM_API_KEY=ollama
+LLM_MODEL=llama3.1:8b
+```
+
+**Option C: Anthropic (Claude).** Use your key and Anthropic's OpenAI-compatible endpoint:
 
 ```
 LLM_BASE_URL=https://api.anthropic.com/v1/
@@ -45,18 +53,20 @@ LLM_MODEL=claude-sonnet-4-6
 
 ## 3. Run
 
-**Option A (Ollama):** start everything including the Ollama container, then pull the model once in another terminal:
+**Option A (containerized Ollama):** start everything including the Ollama container, then pull the model once in another terminal:
 
 ```bash
 docker compose --profile ollama up --build
 docker compose exec ollama ollama pull llama3.1:8b
 ```
 
-**Option B (Anthropic):** no Ollama container needed:
+**Option B (host Ollama) or C (Anthropic):** no extra container:
 
 ```bash
 docker compose up --build
 ```
+
+For Option B, make sure host Ollama is running with the model (`ollama pull llama3.1:8b`).
 
 Then DM your bot. It only responds to you (`OWNER_USER_ID`):
 

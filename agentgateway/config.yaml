@@ -16,6 +16,6 @@ llm:
   - name: ollama/*
     provider: ollama
     params:
-      baseUrl: http://host.docker.internal:11434/v1
+      baseUrl: $OLLAMA_BASE_URL
     transformation:
       model: llmRequest.model.stripPrefix("ollama/")

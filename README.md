@@ -22,5 +22,6 @@ Optional add-ons (off by default; the bot runs fully without them):
 
 ## Setup
 
-See [GETTING_STARTED.md](GETTING_STARTED.md) to run it locally, and
-[DEPLOY_RAILWAY.md](DEPLOY_RAILWAY.md) to deploy.
+Start with [GETTING_STARTED.md](GETTING_STARTED.md): get your credentials, then
+pick how to run it (Docker, or standalone with Ollama or Claude). To deploy, see
+[DEPLOY_RAILWAY.md](DEPLOY_RAILWAY.md).

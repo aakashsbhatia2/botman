@@ -1,0 +1,61 @@
+services:
+  mcp-tools:
+    build: ./mcp-tools
+    environment:
+      PORT: "8080"
+      NOTION_TOKEN: ${NOTION_TOKEN:-}
+      NOTION_DATABASE_ID: ${NOTION_DATABASE_ID:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REFRESH_TOKEN: ${GOOGLE_REFRESH_TOKEN:-}
+      TIMEZONE: ${TIMEZONE:-}
+    restart: unless-stopped
+
+  bot:
+    build: ./bot
+    depends_on:
+      - mcp-tools
+    environment:
+      DISCORD_TOKEN: ${DISCORD_TOKEN:-}
+      OWNER_USER_ID: ${OWNER_USER_ID:-}
+      TIMEZONE: ${TIMEZONE:-}
+      HISTORY_LIMIT: ${HISTORY_LIMIT:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-}
+      MCP_SERVER_URL: http://mcp-tools:8080/mcp
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["ollama"]
+    volumes:
+      - ollama-data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+
+  agentgateway:
+    build: ./agentgateway
+    profiles: ["gateway"]
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OLLAMA_BASE_URL: http://ollama:11434/v1
+    restart: unless-stopped
+
+  alloy:
+    build: ./alloy
+    profiles: ["metrics"]
+    environment:
+      GRAFANA_PROM_URL: ${GRAFANA_PROM_URL:-}
+      GRAFANA_PROM_USER: ${GRAFANA_PROM_USER:-}
+      GRAFANA_PROM_TOKEN: ${GRAFANA_PROM_TOKEN:-}
+    restart: unless-stopped
+
+volumes:
+  ollama-data:

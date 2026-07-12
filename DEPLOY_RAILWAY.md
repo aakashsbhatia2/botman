@@ -1,23 +1,27 @@
 # Deploy to Railway
 
-Each component ships as its own Railway service in one project, pointed at its
-subfolder via **Settings → Source → Root Directory**, talking over the private
-network. Core is `mcp-tools` + `bot`; `agentgateway` and `alloy` are optional.
+Railway deploys each folder as its own service (it does not run `docker-compose`,
+which is local-only). Each service builds from its Dockerfile and they talk over
+Railway's private network. Core is `mcp-tools` + `bot`; `agentgateway` and
+`alloy` are optional.
 
-Push first (`.env` and `node_modules` are gitignored):
+Ollama needs a GPU, which Railway does not provide, so deploy with **Anthropic**
+(or another hosted OpenAI-compatible endpoint).
 
-```bash
-git push
-```
+## Fork first
 
-For each service below: **New → GitHub Repo → `botman`**, set its **Root
-Directory**, **rename** it (sets its `*.railway.internal` hostname), add
-**Variables**, deploy.
+Railway deploys from a GitHub repo you own and redeploys when you push to it, so
+**fork this repo to your GitHub account** first. (`.env` and `node_modules` are
+gitignored, so no secrets travel with it.) No fork? Deploy from a local clone with
+the Railway CLI instead: `railway up`.
+
+For each service below: **New → GitHub Repo → your fork**, set **Settings → Source
+→ Root Directory**, **rename** it (sets its `*.railway.internal` hostname), add
+**Variables**, deploy. Keep every service private.
 
 ## mcp-tools
 
-- Root Directory: `mcp-tools`
-- Variables:
+Root Directory: `mcp-tools`
 
 ```
 NOTION_TOKEN=...
@@ -29,52 +33,59 @@ TIMEZONE=America/New_York
 PORT=8080
 ```
 
-- Verify: logs show `[mcp] tools server up on port 8080`. Keep it private.
+Logs: `[mcp] tools server up on port 8080`.
 
 ## bot
 
-- Root Directory: `bot`
-- Variables:
+Root Directory: `bot`
 
 ```
 DISCORD_TOKEN=...
 OWNER_USER_ID=...
-ANTHROPIC_API_KEY=...
 TIMEZONE=America/New_York
-MODEL=claude-sonnet-4-6
+HISTORY_LIMIT=10
 MCP_SERVER_URL=http://mcp-tools.railway.internal:8080/mcp
+LLM_BASE_URL=https://api.anthropic.com/v1/
+LLM_API_KEY=sk-ant-...
+LLM_MODEL=claude-sonnet-4-6
 ```
 
-- Verify: logs show `[discord] logged in as …`, then DM the bot.
+Logs: `[discord] logged in as …`, then DM the bot.
+
+To route through the gateway instead, deploy `agentgateway` below and change the
+bot's LLM vars to:
+
+```
+LLM_BASE_URL=http://agentgateway.railway.internal:3000/v1
+LLM_API_KEY=unused
+LLM_MODEL=anthropic/claude-sonnet-4-6
+```
 
 ## agentgateway (optional)
 
-LLM proxy that holds the key and logs per-request cost. Railway builds its Dockerfile.
-
-- Root Directory: `agentgateway`
-- Variables:
+Cost + token tracking, one endpoint for many providers. Root Directory: `agentgateway`
 
 ```
-ANTHROPIC_API_KEY=...
+ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-- Point the bot at it: add `LLM_GATEWAY_URL=http://agentgateway.railway.internal:3000` to the bot's variables.
-- Verify: logs show `started bind bind="bind/3000"`. Keep it private.
+Logs: `started bind`.
 
 ## alloy (optional)
 
-Ships gateway token-usage metrics to Grafana Cloud. Requires agentgateway. Railway builds its Dockerfile.
-
-- Root Directory: `alloy`
-- Variables (from Grafana Cloud → **Prometheus → Send Metrics → Grafana Alloy**):
+Ships gateway token metrics to Grafana Cloud. Requires agentgateway and a free
+Grafana Cloud account. Root Directory: `alloy`
 
 ```
 GRAFANA_PROM_URL=...
 GRAFANA_PROM_USER=...
 GRAFANA_PROM_TOKEN=...
+SCRAPE_TARGET=agentgateway.railway.internal:<stats port>
 ```
 
-- Verify: in Grafana → **Explore**, query `agentgateway_gen_ai_client_token_usage_sum`.
+Set `SCRAPE_TARGET` to the stats address the gateway logs on startup (it must be
+reachable on the private network). Verify in Grafana: query
+`agentgateway_gen_ai_client_token_usage_sum`.
 
 ## Redeploy
 

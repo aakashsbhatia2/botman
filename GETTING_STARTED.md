@@ -1,251 +1,28 @@
 # Getting started
 
-A step-by-step walkthrough to get botman running. Do the steps in order. After
-each step there's a **Run it** check so you can confirm your progress.
+Two steps: get your credentials, then pick how to run botman.
 
-First, install dependencies once:
+## 1. Get your credentials
 
-```bash
-cd mcp-tools && npm install
-cd ../bot && npm install
-```
+### Discord
 
-## Step 1: Set up the Discord bot
+See [DISCORD_SETUP.md](DISCORD_SETUP.md) for the bot token (`DISCORD_TOKEN`) and your user ID (`OWNER_USER_ID`).
 
-1. Go to the [Discord Developer Portal](https://discord.com/developers/applications) → **New Application** → name it.
-2. **Bot** tab → **Reset Token** → copy the token. Turn **ON** the **Message Content Intent**.
-3. Invite it to your server: **OAuth2 → URL Generator** → check `bot` → check **Send Messages** + **Read Message History** → open the generated URL → pick your server → **Authorize**.
-4. Get your own Discord user ID: **Settings → Advanced → Developer Mode ON**, then right-click your name → **Copy User ID**.
-5. Create the bot's env file:
+### Notion (for saving notes)
 
-```bash
-cp bot/.env.example bot/.env
-```
+1. [notion.so/my-integrations](https://www.notion.so/my-integrations) → **New integration** (Internal) → enable Read/Insert/Update → copy the secret (`ntn_…`).
+2. Create a **full-page database** with properties: `Name` (Title), `Tags` (Multi-select), `Status` (Select: `active`/`done`/`archived`), `Created` (Created time).
+3. **Connect the integration**: open the database → **•••** → **Connections** → add your integration.
+4. The database ID is the 32-char hex chunk in the database URL, after the last `-` and before `?v=`.
 
-Fill in these two values in `bot/.env`:
+### Google Calendar (for scheduling)
 
-```
-DISCORD_TOKEN=<the token from step 2>
-OWNER_USER_ID=<your user ID from step 4>
-```
+See [GOOGLE_SETUP.md](GOOGLE_SETUP.md) for the OAuth credentials and refresh token.
 
-**Run it:** `cd bot && npm run dev`. You should see `[discord] logged in as <name>`. Stop with Ctrl-C. (It won't reply to DMs until the tools server is running in Step 6.)
+## 2. Choose how to run
 
-## Step 2: Choose your LLM backend
+- [Docker Compose](DOCKER.md): one command, recommended.
+- [Standalone with Ollama](STANDALONE_OLLAMA.md): Node plus a local model.
+- [Standalone with Anthropic](STANDALONE_ANTHROPIC.md): Node plus Claude.
 
-botman talks to any **OpenAI-compatible** endpoint, set by three vars in `bot/.env`: `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`. Pick one below. (To route through agentgateway instead, see [Prototyping](#prototyping-optional-add-ons).)
-
-### Option 1: Anthropic (Claude)
-
-1. Go to [console.anthropic.com](https://console.anthropic.com) → add a little credit.
-2. **API Keys → Create Key** → copy it (`sk-ant-…`).
-3. In `bot/.env`:
-
-```
-LLM_BASE_URL=https://api.anthropic.com/v1/
-LLM_API_KEY=<your sk-ant- key>
-LLM_MODEL=claude-sonnet-4-6
-```
-
-This uses Anthropic's OpenAI-compatible endpoint. `claude-haiku-4-5` is cheapest, `claude-opus-4-8` is best.
-
-### Option 2: Ollama (local models)
-
-Runs a local model, so your prompts and data stay entirely on your machine.
-
-1. Install [Ollama](https://ollama.com). It runs as a background service, so it is likely already listening on port 11434 (no need to run `ollama serve`).
-2. Pull a **tool-capable** model. botman needs tool calling for notes and calendar: `llama3.1`, `qwen2.5`, and `mistral-nemo` work; many smaller models do not.
-
-```bash
-ollama pull llama3.1
-```
-
-3. In `bot/.env`, set `LLM_MODEL` to the exact tag you pulled (run `ollama list` to check, e.g. `llama3.1:8b`):
-
-```
-LLM_BASE_URL=http://localhost:11434/v1
-LLM_API_KEY=ollama
-LLM_MODEL=llama3.1:8b
-```
-
-`LLM_API_KEY` is a throwaway placeholder Ollama ignores. Local models are less reliable than Claude at deciding when to call tools and formatting arguments, so expect the occasional miss on smaller models.
-
-**Run it:** `cd bot && npm run dev`. It still logs in, now with your backend configured. The startup log shows the model and endpoint.
-
-## Step 3: Set timezone and history
-
-`bot/.env` already has these filled with sensible defaults. Change `TIMEZONE` to your own [IANA timezone](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) (used when scheduling):
-
-```
-TIMEZONE=America/New_York
-HISTORY_LIMIT=10
-```
-
-`HISTORY_LIMIT` is how many recent messages the bot reads back from the chat for context on each reply; set it to `0` to turn history off. That's all of `bot/.env` done.
-
-**Run it:** `cd bot && npm run dev`. It should log in cleanly. `bot/.env` is now complete.
-
-## Step 4: Set up Notion
-
-The tools server saves your notes to a Notion database. First create its env file:
-
-```bash
-cp mcp-tools/.env.example mcp-tools/.env
-```
-
-1. [notion.so/my-integrations](https://www.notion.so/my-integrations) → **New integration** (Internal) → enable Read/Insert/Update → copy the secret (`ntn_…`) into `mcp-tools/.env`:
-
-```
-NOTION_TOKEN=<your secret>
-```
-
-2. Create a **full-page database** with these properties: `Name` (Title), `Tags` (Multi-select), `Status` (Select: `active`/`done`/`archived`), `Created` (Created time).
-3. **Connect the integration** to it: open the database → **•••** → **Connections** → add your integration. (Easy to miss; the bot can't see the database without this.)
-4. Grab the database ID from its URL, the 32-char hex chunk after the last `-` and before `?v=`, and fill it in:
-
-```
-NOTION_DATABASE_ID=<the 32-char id>
-```
-
-**Run it:** `cd mcp-tools && npm run dev` → `[mcp] tools server up on port 8080`. In another terminal, `curl localhost:8080/health` should print `ok`.
-
-## Step 5: Set up Google Calendar
-
-1. [console.cloud.google.com](https://console.cloud.google.com) → new project → **enable the Google Calendar API**.
-2. **OAuth consent screen**: External; add the scope `https://www.googleapis.com/auth/calendar.events`; add your Gmail as a test user; **Publish to Production** (avoids the 7-day refresh-token expiry).
-3. **Credentials → Create OAuth client ID → Desktop app** → copy the client ID and secret into `mcp-tools/.env`:
-
-```
-GOOGLE_CLIENT_ID=<client id>
-GOOGLE_CLIENT_SECRET=<client secret>
-```
-
-4. Get a refresh token. Run the one-time authorize script, open the printed URL, and approve:
-
-```bash
-cd mcp-tools && node scripts/google/authorize-google.mjs
-```
-
-Fill the `GOOGLE_REFRESH_TOKEN=…` it prints into `mcp-tools/.env`.
-
-5. `TIMEZONE` in `mcp-tools/.env` is pre-filled. Set it to the same value you used in `bot/.env`:
-
-```
-TIMEZONE=America/New_York
-```
-
-That's all of `mcp-tools/.env` done (`PORT` stays at `8080`).
-
-**Run it:** `cd mcp-tools && npm run dev`. It still comes up on port 8080, now fully configured.
-
-## Step 6: Run everything
-
-`MCP_SERVER_URL` in `bot/.env` is already set to `http://localhost:8080/mcp`, the port the tools server runs on. Leave it as-is for local; only change it if you run the tools server somewhere else.
-
-Start both services in two terminals:
-
-```bash
-# terminal 1: tools server
-cd mcp-tools && npm run dev
-
-# terminal 2: bot
-cd bot && npm run dev
-```
-
-When you see `[mcp] tools server up on port 8080` and `[discord] logged in as …`, DM your bot:
-
-- **Save**: "remember to call the dentist tomorrow"
-- **Recall**: "what do I need to do?"
-- **Mark done**: "I called the dentist"
-- **Schedule**: "set up a 30-min call with sam@example.com tomorrow at 3pm"
-
-It only responds to you (`OWNER_USER_ID`). That's the full path working end to end.
-
-## Prototyping: optional add-ons
-
-Extra services for when you want to meter cost and dashboard usage. The bot works
-fully without them; add them only if you want to experiment. They need **Docker**.
-
-### agentgateway: one OpenAI-compatible endpoint for many providers
-
-An OpenAI-compatible proxy you point the bot at instead of a provider directly. Because the bot already speaks OpenAI format, switching to it is just a change of `LLM_BASE_URL`.
-
-Benefits:
-
-- **Cost + token tracking**: tracks token usage per request and can compute USD cost from per-model rates; the standalone binary also ships a built-in costs and analytics dashboard.
-- **One endpoint, many models**: route across Anthropic, Ollama, and others behind a single URL, with the provider keys held in the gateway instead of the bot.
-- **MCP tool access control**: govern which MCP tools are reachable through it.
-
-The shipped `agentgateway/config.yaml` routes model names starting with `claude-` to Anthropic and everything else to your local Ollama, all behind one OpenAI-compatible endpoint on port 3000.
-
-1. If you'll route to Claude, put your Anthropic key in the gateway's env file (skip this if you're only using Ollama through the gateway):
-
-```bash
-cp agentgateway/.env.example agentgateway/.env
-```
-
-Set `ANTHROPIC_API_KEY=sk-ant-...` in it.
-
-2. Build and run it (serves on port 3000). On Linux the `--add-host` flag lets the container reach Ollama running on your host:
-
-```bash
-docker build -t agentgateway ./agentgateway
-docker run --rm -p 3000:3000 -p 15020:15020 --add-host=host.docker.internal:host-gateway --env-file agentgateway/.env agentgateway
-```
-
-3. Point the bot at the gateway in `bot/.env`. The model name you pick decides the backend:
-
-```
-LLM_BASE_URL=http://localhost:3000/v1
-LLM_API_KEY=unused
-LLM_MODEL=claude-sonnet-4-6
-```
-
-Use a `claude-*` model to hit Anthropic, or your Ollama tag (e.g. `llama3.1:8b`) to hit Ollama.
-
-**Run it:** with the gateway running, start the bot (`cd bot && npm run dev`) and DM it.
-
-Notes:
-- This config uses agentgateway's current `llm:` schema, and the Dockerfile pulls the `latest` image. If you pin a specific version, confirm it supports this schema (see the [provider docs](https://agentgateway.dev/docs/standalone/latest/llm/providers/)).
-- Inside Docker, Ollama is reached at `host.docker.internal:11434`, not `localhost` (already set in `config.yaml`).
-- Cost tracking is wired via `catalog.json` (per-model `input`/`output` rates under `config.modelCatalog`). Ollama is local and free, so it logs as $0; the rates apply when you route a paid model such as `anthropic/claude-sonnet-4-6`. Rate units can differ by agentgateway version, so check the logged cost on your first paid request and adjust `catalog.json` if it looks off by orders of magnitude.
-
-### alloy: token-usage dashboards in Grafana Cloud
-
-Scrapes agentgateway's metrics and ships them to Grafana Cloud, turning
-per-request token counts into charts you can query over time. Requires the
-agentgateway add-on above (running with port `15020` published, as shown) and a
-free **Grafana Cloud** account. Grafana gets **token usage**; the USD cost figure
-stays in the gateway's request logs.
-
-Benefits:
-
-- **Historical token usage**: token counts stored and queryable over time, not just per-request logs.
-- **Dashboards + alerts**: chart token volume in Grafana and alert when it spikes.
-
-1. In Grafana Cloud → **Prometheus → Send Metrics → Grafana Alloy**, copy the remote-write URL, the username (instance ID), and generate a token.
-2. Create its env file and fill in those values:
-
-```bash
-cp alloy/.env.example alloy/.env
-```
-
-```
-GRAFANA_PROM_URL=<remote-write url>
-GRAFANA_PROM_USER=<instance id>
-GRAFANA_PROM_TOKEN=<token>
-SCRAPE_TARGET=host.docker.internal:15020
-```
-
-`SCRAPE_TARGET` points Alloy at your locally-running gateway's metrics port.
-
-3. Build and run it:
-
-```bash
-docker build -t alloy ./alloy
-docker run --rm --env-file alloy/.env alloy
-```
-
-**Run it:** with the gateway and bot running, DM the bot a few times, then in Grafana → **Explore** → your Prometheus datasource, query `agentgateway_gen_ai_client_token_usage_sum`.
-
-For deploying all of this to the cloud, see [DEPLOY_RAILWAY.md](DEPLOY_RAILWAY.md).
+To deploy to the cloud, see [DEPLOY_RAILWAY.md](DEPLOY_RAILWAY.md).

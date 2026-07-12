@@ -31,31 +31,57 @@ OWNER_USER_ID=<your user ID from step 4>
 
 **Run it:** `cd bot && npm run dev`. You should see `[discord] logged in as <name>`. Stop with Ctrl-C. (It won't reply to DMs until the tools server is running in Step 6.)
 
-## Step 2: Get your Anthropic API key
+## Step 2: Choose your LLM backend
+
+botman talks to any **OpenAI-compatible** endpoint, set by three vars in `bot/.env`: `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`. Pick one below. (To route through agentgateway instead, see [Prototyping](#prototyping-optional-add-ons).)
+
+### Option 1: Anthropic (Claude)
 
 1. Go to [console.anthropic.com](https://console.anthropic.com) → add a little credit.
 2. **API Keys → Create Key** → copy it (`sk-ant-…`).
-3. Fill it into `bot/.env`:
+3. In `bot/.env`:
 
 ```
-ANTHROPIC_API_KEY=<your key>
+LLM_BASE_URL=https://api.anthropic.com/v1/
+LLM_API_KEY=<your sk-ant- key>
+LLM_MODEL=claude-sonnet-4-6
 ```
 
-This is what powers the bot's replies. The bot calls Anthropic directly, no gateway needed.
+This uses Anthropic's OpenAI-compatible endpoint. `claude-haiku-4-5` is cheapest, `claude-opus-4-8` is best.
 
-**Run it:** `cd bot && npm run dev` again. It still logs in, now with your key loaded.
+### Option 2: Ollama (local models)
 
-## Step 3: Set timezone, model, and history
+Runs a local model, so your prompts and data stay entirely on your machine.
+
+1. Install [Ollama](https://ollama.com). It runs as a background service, so it is likely already listening on port 11434 (no need to run `ollama serve`).
+2. Pull a **tool-capable** model. botman needs tool calling for notes and calendar: `llama3.1`, `qwen2.5`, and `mistral-nemo` work; many smaller models do not.
+
+```bash
+ollama pull llama3.1
+```
+
+3. In `bot/.env`, set `LLM_MODEL` to the exact tag you pulled (run `ollama list` to check, e.g. `llama3.1:8b`):
+
+```
+LLM_BASE_URL=http://localhost:11434/v1
+LLM_API_KEY=ollama
+LLM_MODEL=llama3.1:8b
+```
+
+`LLM_API_KEY` is a throwaway placeholder Ollama ignores. Local models are less reliable than Claude at deciding when to call tools and formatting arguments, so expect the occasional miss on smaller models.
+
+**Run it:** `cd bot && npm run dev`. It still logs in, now with your backend configured. The startup log shows the model and endpoint.
+
+## Step 3: Set timezone and history
 
 `bot/.env` already has these filled with sensible defaults. Change `TIMEZONE` to your own [IANA timezone](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) (used when scheduling):
 
 ```
 TIMEZONE=America/New_York
-MODEL=claude-sonnet-4-6
 HISTORY_LIMIT=10
 ```
 
-Leave `MODEL` as-is for a good default: `claude-haiku-4-5` is cheapest, `claude-opus-4-8` is best. `HISTORY_LIMIT` is how many recent messages the bot reads back from the chat for context on each reply; set it to `0` to turn history off. That's all of `bot/.env` done.
+`HISTORY_LIMIT` is how many recent messages the bot reads back from the chat for context on each reply; set it to `0` to turn history off. That's all of `bot/.env` done.
 
 **Run it:** `cd bot && npm run dev`. It should log in cleanly. `bot/.env` is now complete.
 
@@ -140,42 +166,49 @@ It only responds to you (`OWNER_USER_ID`). That's the full path working end to e
 Extra services for when you want to meter cost and dashboard usage. The bot works
 fully without them; add them only if you want to experiment. They need **Docker**.
 
-### agentgateway: proxy + per-request cost logging
+### agentgateway: one OpenAI-compatible endpoint for many providers
 
-Puts an LLM proxy in front of Anthropic. It holds the API key so the bot doesn't.
+An OpenAI-compatible proxy you point the bot at instead of a provider directly. Because the bot already speaks OpenAI format, switching to it is just a change of `LLM_BASE_URL`.
 
 Benefits:
 
-- **Meter cost**: logs the USD cost of every request.
-- **LLM-agnostic gateway**: swap providers or models behind one endpoint without touching the bot.
+- **Cost + token tracking**: tracks token usage per request and can compute USD cost from per-model rates; the standalone binary also ships a built-in costs and analytics dashboard.
+- **One endpoint, many models**: route across Anthropic, Ollama, and others behind a single URL, with the provider keys held in the gateway instead of the bot.
 - **MCP tool access control**: govern which MCP tools are reachable through it.
 
-1. Create its env file and set your Anthropic key:
+The shipped `agentgateway/config.yaml` routes model names starting with `claude-` to Anthropic and everything else to your local Ollama, all behind one OpenAI-compatible endpoint on port 3000.
+
+1. If you'll route to Claude, put your Anthropic key in the gateway's env file (skip this if you're only using Ollama through the gateway):
 
 ```bash
 cp agentgateway/.env.example agentgateway/.env
 ```
 
-```
-ANTHROPIC_API_KEY=<your key>
-```
+Set `ANTHROPIC_API_KEY=sk-ant-...` in it.
 
-2. Build and run it (serves on port 3000):
+2. Build and run it (serves on port 3000). On Linux the `--add-host` flag lets the container reach Ollama running on your host:
 
 ```bash
 docker build -t agentgateway ./agentgateway
-docker run --rm -p 3000:3000 -p 15020:15020 --env-file agentgateway/.env agentgateway
+docker run --rm -p 3000:3000 -p 15020:15020 --add-host=host.docker.internal:host-gateway --env-file agentgateway/.env agentgateway
 ```
 
-3. Point the bot at it by adding this line to `bot/.env`:
+3. Point the bot at the gateway in `bot/.env`. The model name you pick decides the backend:
 
 ```
-LLM_GATEWAY_URL=http://localhost:3000
+LLM_BASE_URL=http://localhost:3000/v1
+LLM_API_KEY=unused
+LLM_MODEL=claude-sonnet-4-6
 ```
 
-Behind the gateway the real key lives in `agentgateway/.env`, so the bot's own `ANTHROPIC_API_KEY` is ignored.
+Use a `claude-*` model to hit Anthropic, or your Ollama tag (e.g. `llama3.1:8b`) to hit Ollama.
 
-**Run it:** with the gateway running, start the bot (`cd bot && npm run dev`) and DM it. The gateway's logs print a per-request line with `agw.ai.usage.cost.total` in USD.
+**Run it:** with the gateway running, start the bot (`cd bot && npm run dev`) and DM it.
+
+Notes:
+- This config uses agentgateway's current `llm:` schema, and the Dockerfile pulls the `latest` image. If you pin a specific version, confirm it supports this schema (see the [provider docs](https://agentgateway.dev/docs/standalone/latest/llm/providers/)).
+- Inside Docker, Ollama is reached at `host.docker.internal:11434`, not `localhost` (already set in `config.yaml`).
+- Cost tracking is wired via `catalog.json` (per-model `input`/`output` rates under `config.modelCatalog`). Ollama is local and free, so it logs as $0; the rates apply when you route a paid model such as `anthropic/claude-sonnet-4-6`. Rate units can differ by agentgateway version, so check the logged cost on your first paid request and adjust `catalog.json` if it looks off by orders of magnitude.
 
 ### alloy: token-usage dashboards in Grafana Cloud
 

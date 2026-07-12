@@ -2,11 +2,14 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { config } from "../config.js";
 
-function toClaudeTool(tool) {
+function toOpenAITool(tool) {
   return {
-    name: tool.name,
-    description: tool.description,
-    input_schema: tool.inputSchema,
+    type: "function",
+    function: {
+      name: tool.name,
+      description: tool.description,
+      parameters: tool.inputSchema,
+    },
   };
 }
 
@@ -25,9 +28,9 @@ export async function withToolSession(fn) {
   await client.connect(transport);
 
   const session = {
-    async listDefinitions() {
+    async listOpenAITools() {
       const { tools } = await client.listTools();
-      return tools.map(toClaudeTool);
+      return tools.map(toOpenAITool);
     },
 
     async call(name, input) {

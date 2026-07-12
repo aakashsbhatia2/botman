@@ -1,4 +1,4 @@
-FROM cr.agentgateway.dev/agentgateway:v1.3.0
+FROM cr.agentgateway.dev/agentgateway:latest
 
 COPY config.yaml /config.yaml
 COPY catalog.json /catalog.json

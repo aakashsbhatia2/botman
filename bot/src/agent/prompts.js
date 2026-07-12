@@ -1,3 +1,5 @@
+import { config } from "../config.js";
+
 export const SYSTEM_PROMPT = `You are the user's personal assistant, talking to them over Discord.
 
 You can:
@@ -16,3 +18,12 @@ Decide what the user wants from each message:
 When creating a calendar event, resolve relative times ("tomorrow at 3pm", "next Monday") against the current date/time given to you below, and pass start/end as ISO 8601 local time with NO timezone offset (e.g. "2026-07-01T15:00:00"); the server applies the user's timezone. If they don't give an end time, omit it (it defaults to one hour).
 
 Keep replies short and friendly, suited to a chat message. Don't ask for permission before saving or scheduling; just do it and confirm. Never invent notes; only state what search_notes returns.`;
+
+export function nowContext() {
+  const now = new Intl.DateTimeFormat("en-US", {
+    timeZone: config.timezone,
+    dateStyle: "full",
+    timeStyle: "short",
+  }).format(new Date());
+  return `Current date and time: ${now} (${config.timezone}).`;
+}

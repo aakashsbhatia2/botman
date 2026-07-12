@@ -1,7 +1,7 @@
 # botman
 
-A personal assistant you chat with over Discord, powered by Claude. It only
-responds to you.
+A personal assistant you chat with over Discord, powered by any OpenAI-compatible
+LLM (Claude, or a local model via Ollama). It only responds to you.
 
 ## What it does
 
@@ -12,12 +12,12 @@ responds to you.
 
 ## Components
 
-- **`bot/`**: the Discord bot and Claude agent. Calls Anthropic and reaches its tools over MCP.
+- **`bot/`**: the Discord bot and agent. Talks to any OpenAI-compatible LLM (Claude, Ollama, or a gateway) and reaches its tools over MCP.
 - **`mcp-tools/`**: MCP tools server owning the capabilities (Notion notes + Google Calendar), over HTTP.
 
 Optional add-ons (off by default; the bot runs fully without them):
 
-- **`agentgateway/`**: LLM proxy in front of Anthropic. Meters cost, swaps providers, controls MCP tool access.
+- **`agentgateway/`**: OpenAI-compatible LLM proxy. Routes across providers behind one endpoint, meters cost, controls MCP tool access.
 - **`alloy/`**: ships gateway token-usage metrics to Grafana Cloud for dashboards.
 
 ## Setup

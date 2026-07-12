@@ -1,18 +1,21 @@
 config:
+  readinessAddr: 127.0.0.1:19001
+  statsAddr: 127.0.0.1:19002
   modelCatalog:
   - file: /catalog.json
-binds:
-- port: 3000
-  listeners:
-  - routes:
-    - backends:
-      - ai:
-          name: anthropic
-          provider:
-            anthropic: {}
-      policies:
-        ai:
-          routes:
-            "/v1/messages": "messages"
-        backendAuth:
-          key: "$ANTHROPIC_API_KEY"
+
+llm:
+  port: 3000
+  models:
+  - name: anthropic/*
+    provider: anthropic
+    params:
+      apiKey: $ANTHROPIC_API_KEY
+    transformation:
+      model: llmRequest.model.stripPrefix("anthropic/")
+  - name: ollama/*
+    provider: ollama
+    params:
+      baseUrl: http://host.docker.internal:11434/v1
+    transformation:
+      model: llmRequest.model.stripPrefix("ollama/")

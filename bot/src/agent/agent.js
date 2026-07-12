@@ -1,34 +1,17 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { config, MODEL } from "../config.js";
-import { SYSTEM_PROMPT } from "./prompts.js";
+import OpenAI from "openai";
+import { config } from "../config.js";
+import { SYSTEM_PROMPT, nowContext } from "./prompts.js";
 import { withToolSession } from "./tools.js";
 
 const MAX_TOOL_ITERATIONS = 8;
 
-function textOf(message) {
-  return message.content
-    .filter((block) => block.type === "text")
-    .map((block) => block.text)
-    .join("")
-    .trim();
-}
-
-function nowContext() {
-  const now = new Intl.DateTimeFormat("en-US", {
-    timeZone: config.timezone,
-    dateStyle: "full",
-    timeStyle: "short",
-  }).format(new Date());
-  return `Current date and time: ${now} (${config.timezone}).`;
-}
-
 export function createAgent() {
   let client;
-  function anthropic() {
+  function llm() {
     if (!client) {
-      client = new Anthropic({
-        apiKey: config.anthropicApiKey,
-        baseURL: config.llmGatewayUrl,
+      client = new OpenAI({
+        baseURL: config.llmBaseUrl,
+        apiKey: config.llmApiKey,
       });
     }
     return client;
@@ -37,47 +20,48 @@ export function createAgent() {
   return {
     async respond(history) {
       return withToolSession(async (session) => {
-        const definitions = await session.listDefinitions();
+        const tools = await session.listOpenAITools();
         const system = `${SYSTEM_PROMPT}\n\n${nowContext()}`;
-        const messages = [...history];
+        const messages = [{ role: "system", content: system }, ...history];
 
         for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
-          const message = await anthropic().messages.create({
-            model: MODEL,
+          const completion = await llm().chat.completions.create({
+            model: config.llmModel,
             max_tokens: 1024,
-            system,
-            tools: definitions,
+            tools,
+            tool_choice: "auto",
             messages,
           });
 
-          if (message.stop_reason !== "tool_use") {
-            return textOf(message);
+          const message = completion.choices[0].message;
+
+          if (!message.tool_calls?.length) {
+            return (message.content ?? "").trim();
           }
 
-          messages.push({ role: "assistant", content: message.content });
+          messages.push(message);
 
-          const toolResults = [];
-          for (const block of message.content) {
-            if (block.type !== "tool_use") continue;
+          for (const call of message.tool_calls) {
             let result;
             try {
-              result = await session.call(block.name, block.input);
+              const args = call.function.arguments
+                ? JSON.parse(call.function.arguments)
+                : {};
+              result = await session.call(call.function.name, args);
             } catch (err) {
-              console.error(`[agent] tool ${block.name} failed:`, err);
+              console.error(`[agent] tool ${call.function.name} failed:`, err);
               result = `Error: ${err.message}`;
             }
-            toolResults.push({
-              type: "tool_result",
-              tool_use_id: block.id,
+            messages.push({
+              role: "tool",
+              tool_call_id: call.id,
               content: String(result),
             });
           }
-
-          messages.push({ role: "user", content: toolResults });
         }
 
         console.warn(`[agent] hit max tool iterations (${MAX_TOOL_ITERATIONS})`);
-        return "I got a bit stuck working through that — could you rephrase?";
+        return "I got a bit stuck working through that. Could you rephrase?";
       });
     },
   };

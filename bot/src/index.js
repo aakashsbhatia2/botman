@@ -1,10 +1,12 @@
-import { MODEL } from "./config.js";
+import { config } from "./config.js";
 import { createService } from "./core/service.js";
 import { createAgent } from "./agent/agent.js";
 import { createDiscordBot } from "./discord.js";
 
 async function main() {
-  console.log(`[server] starting (model: ${MODEL})`);
+  console.log(
+    `[server] starting (model: ${config.llmModel}, endpoint: ${config.llmBaseUrl})`,
+  );
 
   const agent = createAgent();
   const service = createService({ agent });

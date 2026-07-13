@@ -41,9 +41,11 @@ export function registerTools(server, { store, calendar }) {
     "search_notes",
     {
       description:
-        "Retrieve ALL of the user's active thoughts. Call this whenever you " +
-        "need to answer a question about what they've saved, or find a thought " +
-        "to mark done. Returns each thought's id, content, and tags.",
+        `
+        Retrieve ALL of the user's active thoughts. Call this whenever you
+        need to answer a question about what they've saved, or perfom any operationson existing notes. 
+        Returns each thought's id, content, and tags.
+        `,
       inputSchema: {},
     },
     async () => {

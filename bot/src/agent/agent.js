@@ -3,7 +3,7 @@ import { config } from "../config.js";
 import { SYSTEM_PROMPT, nowContext } from "./prompts.js";
 import { withToolSession } from "./tools.js";
 
-const MAX_TOOL_ITERATIONS = 8;
+const MAX_TOOL_ITERATIONS = 100;
 
 export function createAgent() {
   let client;

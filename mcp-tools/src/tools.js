@@ -12,7 +12,7 @@ function text(value) {
   return { content: [{ type: "text", text: String(value) }] };
 }
 
-export function registerTools(server, { store, calendar }) {
+export function registerTools(server, { store, calendar, webSearch }) {
   const thoughts = makeThoughts(store);
 
   server.registerTool(
@@ -127,4 +127,24 @@ export function registerTools(server, { store, calendar }) {
       );
     },
   );
+
+  if (webSearch) {
+    server.registerTool(
+      "web_search",
+      {
+        description:
+          "Search the web for current or factual information that is not in " +
+          "the user's notes (news, weather, prices, facts, how-to, recent " +
+          "events). Returns a short answer and source results with title, " +
+          "url, and content.",
+        inputSchema: {
+          query: z.string().describe("The search query."),
+        },
+      },
+      async ({ query }) => {
+        const { answer, results } = await webSearch.search(query);
+        return text(JSON.stringify({ answer, results }));
+      },
+    );
+  }
 }

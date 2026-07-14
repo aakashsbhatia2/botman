@@ -9,6 +9,7 @@ LLM (Claude, or a local model via Ollama). It only responds to you.
 - **Recall**: "what do I need to do?" → answers from your saved notes
 - **Mark done**: "I called the dentist" → marks it done
 - **Schedule**: "set up a 30-min call with someone@example.com tomorrow at 3pm" → creates a Google Calendar event and invites guests
+- **Search the web**: "what's the weather in Tokyo?" → looks it up and answers with sources (optional)
 
 ## Components
 

@@ -1,17 +1,19 @@
 import { createServer } from "node:http";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { PORT } from "./config.js";
+import { PORT, config } from "./config.js";
 import { createNotionStore } from "./store/notion.js";
 import { createCalendar } from "./calendar/google.js";
+import { createWebSearch } from "./search/tavily.js";
 import { registerTools } from "./tools.js";
 
 const store = createNotionStore();
 const calendar = createCalendar();
+const webSearch = config.tavilyApiKey ? createWebSearch() : null;
 
 function buildMcpServer() {
   const server = new McpServer({ name: "mcp-tools", version: "0.1.0" });
-  registerTools(server, { store, calendar });
+  registerTools(server, { store, calendar, webSearch });
   return server;
 }
 

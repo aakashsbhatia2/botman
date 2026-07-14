@@ -19,6 +19,10 @@ See [DISCORD_SETUP.md](DISCORD_SETUP.md) for the bot token (`DISCORD_TOKEN`) and
 
 See [GOOGLE_SETUP.md](GOOGLE_SETUP.md) for the OAuth credentials and refresh token.
 
+### Web search (optional)
+
+Sign up at [tavily.com](https://tavily.com) for a free API key and set `TAVILY_API_KEY`. Leave it blank to disable the `web_search` tool.
+
 ## 2. Choose how to run
 
 - [Docker Compose](DOCKER.md): one command, recommended.

@@ -5,15 +5,17 @@ import { PORT, config } from "./config.js";
 import { createNotionStore } from "./store/notion.js";
 import { createCalendar } from "./calendar/google.js";
 import { createWebSearch } from "./search/tavily.js";
+import { createFetcher } from "./fetch/readable.js";
 import { registerTools } from "./tools.js";
 
 const store = createNotionStore();
 const calendar = createCalendar();
 const webSearch = config.tavilyApiKey ? createWebSearch() : null;
+const fetcher = createFetcher();
 
 function buildMcpServer() {
   const server = new McpServer({ name: "mcp-tools", version: "0.1.0" });
-  registerTools(server, { store, calendar, webSearch });
+  registerTools(server, { store, calendar, webSearch, fetcher });
   return server;
 }
 

@@ -12,7 +12,7 @@ function text(value) {
   return { content: [{ type: "text", text: String(value) }] };
 }
 
-export function registerTools(server, { store, calendar, webSearch }) {
+export function registerTools(server, { store, calendar, webSearch, fetcher }) {
   const thoughts = makeThoughts(store);
 
   server.registerTool(
@@ -125,6 +125,28 @@ export function registerTools(server, { store, calendar, webSearch }) {
       return text(
         `Created event "${event.title}" starting ${event.start}.${invited} Link: ${event.link}`,
       );
+    },
+  );
+
+  server.registerTool(
+    "fetch_url",
+    {
+      description:
+        "Fetch a web page and return its readable text content. Use this to " +
+        "read a specific URL in full, either one the user pasted or a link " +
+        "from web_search results.",
+      inputSchema: {
+        url: z.string().describe("The full URL to fetch, including https://."),
+      },
+    },
+    async ({ url }) => {
+      try {
+        const page = await fetcher.fetchReadable(url);
+        return text(JSON.stringify(page));
+      } catch (err) {
+        console.error(`[mcp] fetch_url failed for ${url}:`, err.message);
+        return text(`Could not read data from ${url}.`);
+      }
     },
   );
 

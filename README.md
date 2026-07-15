@@ -10,6 +10,7 @@ LLM (Claude, or a local model via Ollama). It only responds to you.
 - **Mark done**: "I called the dentist" → marks it done
 - **Schedule**: "set up a 30-min call with someone@example.com tomorrow at 3pm" → creates a Google Calendar event and invites guests
 - **Search the web**: "what's the weather in Tokyo?" → looks it up and answers with sources (optional)
+- **Read a link**: paste a URL → reads the page and summarizes it
 
 ## Components
 

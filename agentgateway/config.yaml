@@ -19,3 +19,15 @@ llm:
       baseUrl: $OLLAMA_BASE_URL
     transformation:
       model: llmRequest.model.stripPrefix("ollama/")
+
+binds:
+- port: 3001
+  listeners:
+  - protocol: HTTP
+    routes:
+    - backends:
+      - mcp:
+          targets:
+          - name: mcp-tools
+            mcp:
+              host: $MCP_TARGET_URL

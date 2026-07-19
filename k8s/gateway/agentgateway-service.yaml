@@ -8,5 +8,9 @@ spec:
   selector:
     app: agentgateway
   ports:
-    - port: 3000
+    - name: llm
+      port: 3000
       targetPort: 3000
+    - name: mcp
+      port: 3001
+      targetPort: 3001

@@ -19,7 +19,7 @@ The Secret is built from `.env` in step 3, so fix these values before you start.
 
 If Docker runs via Docker Desktop, the cluster lives inside the Docker Desktop VM, so `host.minikube.internal` resolves to that VM, not your host. `host.docker.internal` (the hostAlias IP `192.168.65.2`) is what actually reaches your host. If a Docker Desktop update ever changes that IP, re-derive it with `minikube ssh -- 'getent hosts host.docker.internal'` and update the `hostAliases` IP in `k8s/base/bot-deployment.yaml`.
 
-`MCP_SERVER_URL` does not need editing. It is set on the bot Deployment to the in-cluster Service address and overrides whatever is in `.env`.
+`MCP_SERVER_URL=http://mcp-tools:8080/mcp` uses the short Service name, which resolves both in the cluster (same namespace) and under Docker Compose, so the one value works everywhere.
 
 ## 1. Build the images and load them into the cluster
 
@@ -70,9 +70,11 @@ kubectl -n botman logs deploy/bot
 
 Both pods should reach `Running`. mcp-tools should log that it is listening; the bot should log that it connected to Discord.
 
-## Optional: route LLM calls through agentgateway
+## Optional: route LLM and MCP through agentgateway
 
-`agentgateway` is an opt-in add-on that proxies LLM calls, so the bot talks to one endpoint and the gateway routes to Ollama or Anthropic and meters cost. It has its own kustomization in `k8s/gateway` and is applied on top of the core, never part of it.
+`agentgateway` is an opt-in add-on that sits in front of both the LLM and the mcp-tools server, so the bot talks to one endpoint and the gateway routes LLM calls to Ollama or Anthropic (metering cost) and proxies MCP tool calls to mcp-tools (with observability and tool access control).
+
+It is a plain add-on kustomization in `k8s/gateway`, applied on top of the core. You point the bot at it by editing `.env`.
 
 1. Build and load its image:
 
@@ -87,18 +89,35 @@ minikube image load botman-agentgateway:local
 kubectl apply -k k8s/gateway
 ```
 
-3. Point the bot at the gateway. In `.env`:
+3. Point the bot at the gateway in `.env`:
 
 ```
-LLM_BASE_URL=http://agentgateway.botman.svc.cluster.local:3000/v1
+LLM_BASE_URL=http://agentgateway:3000/v1
 LLM_MODEL=ollama/<your-ollama-model>
+MCP_SERVER_URL=http://agentgateway:3001/mcp
 ```
 
-The `ollama/` prefix routes to your host Ollama; use `anthropic/<model>` (for example `anthropic/claude-sonnet-4-6`) to route to Claude, which needs `ANTHROPIC_API_KEY` set in `.env`. Then re-run the Secret command in step 3 and `kubectl -n botman rollout restart deploy/bot`.
+The `ollama/` prefix routes to your host Ollama; use `anthropic/<model>` (for example `anthropic/claude-sonnet-4-6`) to route to Claude, which needs `ANTHROPIC_API_KEY` set in `.env`. Then re-push the Secret and restart the bot:
 
-The gateway carries the `host.docker.internal` hostAlias and `OLLAMA_BASE_URL`, so it reaches host Ollama the same way the bot does. The bot now only talks to the gateway over cluster DNS.
+```
+kubectl -n botman create secret generic botman-env --from-env-file=.env \
+  --dry-run=client -o yaml | kubectl apply -f -
+kubectl -n botman rollout restart deploy/bot
+```
 
-To turn it off: `kubectl delete -k k8s/gateway`, then revert `LLM_BASE_URL` and `LLM_MODEL` in `.env` and re-push the Secret.
+The gateway carries the `host.docker.internal` hostAlias and reaches host Ollama the same way the bot does. It listens on `3000` for LLM (`/v1`) and `3001` for MCP (`/mcp`), and reaches mcp-tools via `MCP_TARGET_URL`.
+
+To turn it off: revert those three `.env` values, re-push the Secret, restart the bot, then `kubectl delete -k k8s/gateway`.
+
+### Open the gateway dashboard
+
+agentgateway serves an Admin UI (with a request Playground) on port `15000` inside the pod. Reach it with a port-forward, which keeps it local to your machine:
+
+```
+kubectl -n botman port-forward deploy/agentgateway 15000:15000
+```
+
+Then open `http://localhost:15000/ui/` in your browser. Leave the command running while you use it; Ctrl-C closes the tunnel.
 
 ## Updating
 

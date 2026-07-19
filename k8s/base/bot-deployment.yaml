@@ -22,9 +22,6 @@ spec:
         - name: bot
           image: botman-bot:local
           imagePullPolicy: IfNotPresent
-          env:
-            - name: MCP_SERVER_URL
-              value: http://mcp-tools.botman.svc.cluster.local:8080/mcp
           envFrom:
             - secretRef:
                 name: botman-env

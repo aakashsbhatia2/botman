@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bot
+  labels:
+    app: bot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bot
+  template:
+    metadata:
+      labels:
+        app: bot
+    spec:
+      hostAliases:
+        - ip: "192.168.65.2"
+          hostnames:
+            - "host.docker.internal"
+      containers:
+        - name: bot
+          image: botman-bot:local
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: MCP_SERVER_URL
+              value: http://mcp-tools.botman.svc.cluster.local:8080/mcp
+          envFrom:
+            - secretRef:
+                name: botman-env
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 256Mi

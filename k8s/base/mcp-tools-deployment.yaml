@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-tools
+  labels:
+    app: mcp-tools
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mcp-tools
+  template:
+    metadata:
+      labels:
+        app: mcp-tools
+    spec:
+      containers:
+        - name: mcp-tools
+          image: botman-mcp-tools:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
+          envFrom:
+            - secretRef:
+                name: botman-env
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 256Mi

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: agentgateway
+  labels:
+    app: agentgateway
+spec:
+  selector:
+    app: agentgateway
+  ports:
+    - port: 3000
+      targetPort: 3000

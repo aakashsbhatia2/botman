@@ -20,14 +20,8 @@ llm:
     transformation:
       model: llmRequest.model.stripPrefix("ollama/")
 
-binds:
-- port: 3001
-  listeners:
-  - protocol: HTTP
-    routes:
-    - backends:
-      - mcp:
-          targets:
-          - name: mcp-tools
-            mcp:
-              host: $MCP_TARGET_URL
+mcp:
+  targets:
+  - name: mcp-tools
+    mcp:
+      host: $MCP_TARGET_URL

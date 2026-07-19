@@ -94,7 +94,7 @@ kubectl apply -k k8s/gateway
 ```
 LLM_BASE_URL=http://agentgateway:3000/v1
 LLM_MODEL=ollama/<your-ollama-model>
-MCP_SERVER_URL=http://agentgateway:3001/mcp
+MCP_SERVER_URL=http://agentgateway:3000/mcp
 ```
 
 The `ollama/` prefix routes to your host Ollama; use `anthropic/<model>` (for example `anthropic/claude-sonnet-4-6`) to route to Claude, which needs `ANTHROPIC_API_KEY` set in `.env`. Then re-push the Secret and restart the bot:
@@ -105,7 +105,7 @@ kubectl -n botman create secret generic botman-env --from-env-file=.env \
 kubectl -n botman rollout restart deploy/bot
 ```
 
-The gateway carries the `host.docker.internal` hostAlias and reaches host Ollama the same way the bot does. It listens on `3000` for LLM (`/v1`) and `3001` for MCP (`/mcp`), and reaches mcp-tools via `MCP_TARGET_URL`.
+The gateway carries the `host.docker.internal` hostAlias and reaches host Ollama the same way the bot does. It serves both on port `3000`: LLM at `/v1` and MCP at `/mcp`, and reaches mcp-tools via `MCP_TARGET_URL`.
 
 To turn it off: revert those three `.env` values, re-push the Secret, restart the bot, then `kubectl delete -k k8s/gateway`.
 
